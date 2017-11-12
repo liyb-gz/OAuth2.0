@@ -9,6 +9,16 @@ from database_setup import Base, Restaurant, MenuItem
 from flask import session as login_session
 import random, string
 
+# Add gconnect
+from oauth2client.client import flow_from_clientsecrets
+from oauth2client.client import FlowExchangeError
+import httplib2
+import json
+from flask import make_response
+import requests
+
+CLIENT_ID = json.loads(
+  open('client_secret.json', 'r').read())['web']['client_id']
 
 #Connect to Database and create database session
 engine = create_engine('sqlite:///restaurantmenu.db')
@@ -148,6 +158,31 @@ def showLogin():
                   for x in xrange(32))
   login_session['state'] = state
   return render_template('login.html', STATE = state)
+
+# Process login info
+@app.route('/gconnect', methods=['GET', 'POST'])
+def gConnect():
+  if request.args.get('state') != login_session['state']:
+    response = make_response(json.dumps('Invalid state.'), 401)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+  else:
+    code = request.data
+
+    try:
+      oauth_flow = flow_from_clientsecrets('client_secret.json', scope='')
+      oauth_flow.redirect_uri = 'postmessage'
+      credentials = oauth_flow.step2_exchange(code)
+    except FlowExchangeError:
+      response = make_response(json.dumps('Failed to upgrade the authorization code.'), 401)
+      response.headers['Content-Type'] = 'application/json'
+      return response
+
+    access_token = credentials.access_token
+    response = make_response(json.dumps(access_token), 401)
+    response.headers['Content-Type'] = 'application/json'
+    return access_token
+
 
 
 if __name__ == '__main__':
