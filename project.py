@@ -213,14 +213,16 @@ def gConnect():
         raise ValueError('Wrong issuer.')
 
       # In case the user has already logged in
-      # stored_access_token = login_session.get('access_token')
-      # stored_user_id = login_session.get('user_id')
-      # if stored_access_token is not None and user_id == stored_user_id:
-      #   # Update access token
-      #   login_session['access_token'] = access_token
-      #   response = make_response(json.dumps('Current user is already connected.'), 200)
-      #   response.headers['Content-Type'] = 'application/json'
-      #   return response
+      stored_access_token = login_session.get('access_token')
+      stored_user_id = login_session.get('user_id')
+      if stored_access_token is not None and user_id == stored_user_id:
+        # Update access token
+        # login_session['access_token'] = access_token
+        print "Old token: {}".format(stored_access_token)
+        print "New token: {}".format(access_token)
+        response = make_response(json.dumps('Current user is already connected.'), 200)
+        response.headers['Content-Type'] = 'application/json'
+        return response
 
       # Store the access token in the session for later use.
       login_session['access_token'] = access_token
