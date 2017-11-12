@@ -45,10 +45,13 @@
   	  	type: 'POST',
   	  	url: '/gconnect?state={{STATE}}',
 	    processData: false,
-	    contentType: 'application/octet-stream; charset=utf-8',
-	    data: access_token,
+	    contentType: 'application/json; charset=utf-8',
+	    data: JSON.stringify(googleUser.getAuthResponse()),
 	    success: function (result) {
 	    	$('#result').html('Log in success!<br />' + result);
+	    	setTimeout(function() {
+	          window.location.href = "/restaurant";
+	        }, 4000);
 	    }
   	  })
     }

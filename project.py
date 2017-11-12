@@ -17,6 +17,10 @@ import json
 from flask import make_response
 import requests
 
+# access_token verification
+from google.oauth2 import id_token
+from google.auth.transport import requests as g_requests
+
 CLIENT_ID = json.loads(
   open('client_secret.json', 'r').read())['web']['client_id']
 
@@ -162,26 +166,91 @@ def showLogin():
 # Process login info
 @app.route('/gconnect', methods=['GET', 'POST'])
 def gConnect():
+
+  # Check session state
   if request.args.get('state') != login_session['state']:
     response = make_response(json.dumps('Invalid state.'), 401)
     response.headers['Content-Type'] = 'application/json'
     return response
+
+  # Session state correct, process ajax json from frontend
   else:
-    code = request.data
+    auth_response = request.json
+    id_code = auth_response['id_token']
+    access_token = auth_response['access_token']
+
+    # Check if access token is valid
+    url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={}'.format(access_token))
+    h = httplib2.Http()
+    result = json.loads(h.request(url, 'GET')[1])
+    user_id = result['user_id']
+
+    # If there was an error in the access token info, abort.
+    if result.get('error') is not None:
+        response = make_response(json.dumps(result.get('error')), 500)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+    # Verify that the access token is valid for this app.
+    if result['issued_to'] != CLIENT_ID:
+        response = make_response(
+            json.dumps("Token's client ID does not match app's."), 401)
+        print "Token's client ID does not match app's."
+        response.headers['Content-Type'] = 'application/json'
+        return response
 
     try:
-      oauth_flow = flow_from_clientsecrets('client_secret.json', scope='')
-      oauth_flow.redirect_uri = 'postmessage'
-      credentials = oauth_flow.step2_exchange(code)
-    except FlowExchangeError:
-      response = make_response(json.dumps('Failed to upgrade the authorization code.'), 401)
+      id_info = id_token.verify_oauth2_token(id_code, g_requests.Request(), CLIENT_ID)
+
+      if id_info['sub'] != user_id:
+        response = make_response(
+            json.dumps("Token's user ID doesn't match given user ID."), 401)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+
+      if id_info['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+        raise ValueError('Wrong issuer.')
+
+      # In case the user has already logged in
+      stored_access_token = login_session.get('access_token')
+      stored_user_id = login_session.get('user_id')
+      if stored_access_token is not None and user_id == stored_user_id:
+        response = make_response(json.dumps('Current user is already connected.'), 200)
+        response.headers['Content-Type'] = 'application/json'
+        return response
+
+      # Store the access token in the session for later use.
+      login_session['access_token'] = access_token
+      login_session['user_id'] = user_id
+
+      # Get user info
+      userinfo_url = "https://www.googleapis.com/oauth2/v1/userinfo"
+      params = {'access_token': access_token, 'alt': 'json'}
+      answer = requests.get(userinfo_url, params=params)
+
+      data = answer.json()
+
+      login_session['username'] = data['name']
+      login_session['picture'] = data['picture']
+      login_session['email'] = data['email']
+
+      output = ''
+      output += '<h1>Welcome, '
+      output += login_session['username']
+      output += '!</h1>'
+      output += '<img src="'
+      output += login_session['picture']
+      output += ' " style = "width: 30px; height: 30px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
+      flash("you are now logged in as %s" % login_session['username'])
+      print "done!"
+      return output
+
+    except ValueError, error:
+      response = make_response(json.dumps(str(error)), 401)
       response.headers['Content-Type'] = 'application/json'
       return response
 
-    access_token = credentials.access_token
-    response = make_response(json.dumps(access_token), 401)
-    response.headers['Content-Type'] = 'application/json'
-    return access_token
 
 
 
