@@ -161,10 +161,10 @@ def showLogin():
   state = ''.join(random.choice(string.ascii_uppercase + string.digits)
                   for x in xrange(32))
   login_session['state'] = state
-  return render_template('login.html', STATE = state)
+  return render_template('login.html', STATE = state, CLIENT_ID = CLIENT_ID)
 
 # Process login info
-@app.route('/gconnect', methods=['GET', 'POST'])
+@app.route('/gconnect', methods=['POST'])
 def gConnect():
 
   # Check session state
@@ -183,7 +183,7 @@ def gConnect():
     url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={}'.format(access_token))
     h = httplib2.Http()
     result = json.loads(h.request(url, 'GET')[1])
-    user_id = result['user_id']
+    user_id = result.get('user_id')
 
     # If there was an error in the access token info, abort.
     if result.get('error') is not None:

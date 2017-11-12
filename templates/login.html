@@ -18,7 +18,7 @@
   	function gapiInit() {
   		gapi.load('auth2', function () {
             auth2 = gapi.auth2.init({
-                client_id: "673274558455-it6s06htmm3quqakc97q2a3bnggend4m.apps.googleusercontent.com",
+                client_id: "{{CLIENT_ID}}",
                 scope: 'profile openid email',
                 prompt: 'consent'
                 // redirect_uri: 'http://localhost/'
@@ -30,16 +30,6 @@
     function onSuccess(googleUser) {
       response = googleUser;
       var profile = googleUser.getBasicProfile();
-      console.log(googleUser)
-	  console.log('ID: ' + profile.getId()); // Do not send to your backend! Use an ID token instead.
-	  console.log('Name: ' + profile.getName());
-	  console.log('Image URL: ' + profile.getImageUrl());
-	  console.log('Email: ' + profile.getEmail()); // This is null if the 'email' scope is not present.
-
-	  var id_token = googleUser.getAuthResponse().id_token;
-	  var access_token = googleUser.getAuthResponse().access_token;
-  	  console.log("ID Token: " + id_token);
-  	  console.log("Access Token: " + access_token);
 
   	  $.ajax({
   	  	type: 'POST',
