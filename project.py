@@ -213,12 +213,14 @@ def gConnect():
         raise ValueError('Wrong issuer.')
 
       # In case the user has already logged in
-      stored_access_token = login_session.get('access_token')
-      stored_user_id = login_session.get('user_id')
-      if stored_access_token is not None and user_id == stored_user_id:
-        response = make_response(json.dumps('Current user is already connected.'), 200)
-        response.headers['Content-Type'] = 'application/json'
-        return response
+      # stored_access_token = login_session.get('access_token')
+      # stored_user_id = login_session.get('user_id')
+      # if stored_access_token is not None and user_id == stored_user_id:
+      #   # Update access token
+      #   login_session['access_token'] = access_token
+      #   response = make_response(json.dumps('Current user is already connected.'), 200)
+      #   response.headers['Content-Type'] = 'application/json'
+      #   return response
 
       # Store the access token in the session for later use.
       login_session['access_token'] = access_token
@@ -243,11 +245,54 @@ def gConnect():
       output += login_session['picture']
       output += ' " style = "width: 30px; height: 30px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
       flash("you are now logged in as %s" % login_session['username'])
-      print "done!"
+      print "Access token: {}".format(login_session['access_token'])
       return output
 
     except ValueError, error:
       response = make_response(json.dumps(str(error)), 401)
+      response.headers['Content-Type'] = 'application/json'
+      return response
+
+# User logout
+@app.route('/gdisconnect', methods=['GET', 'POST'])
+def gDisonnect():
+  access_token = login_session.get('access_token')
+
+  # Check if the user is logged in
+  if access_token is None:
+    print 'Access Token is None'
+    response = make_response(json.dumps('Current user not connected.'), 401)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+
+  # User logged in, check him/her out.
+  else:
+    print 'In gdisconnect access token is {}'.format(access_token)
+    print 'User name is: {}'.format(login_session['username'])
+
+    # Send request to google to revoke access token
+    # url = 'https://accounts.google.com/o/oauth2/revoke?token={}'.format(access_token)
+    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session['access_token']
+    print 'URL to revoke token: {}'.format(url)
+    h = httplib2.Http()
+    result = h.request(url, 'GET')[0]
+
+    print 'HTTP Request to Google to revoke token: \n{}'.format(result)
+
+    # Request to google successful
+    print result['status']
+    # if result['status'] == '200':
+    if result.status == 200:
+      del login_session['access_token']
+      del login_session['user_id']
+      del login_session['username']
+      del login_session['email']
+      del login_session['picture']
+      response = make_response(json.dumps('Successfully disconnected.'), 200)
+      response.headers['Content-Type'] = 'application/json'
+      return response
+    else:
+      response = make_response(json.dumps('Failed to revoke token for given user.', 400))
       response.headers['Content-Type'] = 'application/json'
       return response
 

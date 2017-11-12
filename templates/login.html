@@ -39,9 +39,9 @@
 	    data: JSON.stringify(googleUser.getAuthResponse()),
 	    success: function (result) {
 	    	$('#result').html('Log in success!<br />' + result);
-	    	setTimeout(function() {
-	          window.location.href = "/restaurant";
-	        }, 4000);
+	    	// setTimeout(function() {
+	     //      window.location.href = "/restaurant";
+	     //    }, 4000);
 	    }
   	  })
     }
