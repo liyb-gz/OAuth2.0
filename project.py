@@ -107,6 +107,12 @@ def deleteRestaurant(restaurant_id):
       return redirect('/login')
 
   restaurantToDelete = session.query(Restaurant).filter_by(id = restaurant_id).one()
+  creator = session.query(User).filter_by(id = restaurantToDelete.user_id).one()
+
+  if login_session['email'] != creator.email:
+    flash('You don\'t have the permission to delete this restaurant.')
+    return redirect('/restaurant')
+
   if request.method == 'POST':
     session.delete(restaurantToDelete)
     flash('%s Successfully Deleted' % restaurantToDelete.name)
