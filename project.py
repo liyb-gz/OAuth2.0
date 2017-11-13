@@ -146,6 +146,12 @@ def newMenuItem(restaurant_id):
       return redirect(url_for('showLogin'))
 
   restaurant = session.query(Restaurant).filter_by(id = restaurant_id).one()
+  creator = session.query(User).filter_by(id = restaurant.user_id).one()
+
+  if login_session['email'] != creator.email:
+    flash('You don\'t have the permission to add new menu items to this restaurant.')
+    return redirect(url_for('showRestaurants'))
+
   if request.method == 'POST':
       newItem = MenuItem(name = request.form['name'],
                          description = request.form['description'],
@@ -167,8 +173,14 @@ def editMenuItem(restaurant_id, menu_id):
     if 'username' not in login_session:
       return redirect(url_for('showLogin'))
 
-    editedItem = session.query(MenuItem).filter_by(id = menu_id).one()
     restaurant = session.query(Restaurant).filter_by(id = restaurant_id).one()
+    creator = session.query(User).filter_by(id = restaurant.user_id).one()
+
+    if login_session['email'] != creator.email:
+      flash('You don\'t have the permission to edit this restaurant\'s menu items.')
+      return redirect(url_for('showRestaurants'))
+
+    editedItem = session.query(MenuItem).filter_by(id = menu_id).one()
     if request.method == 'POST':
         if request.form['name']:
             editedItem.name = request.form['name']
@@ -193,6 +205,12 @@ def deleteMenuItem(restaurant_id,menu_id):
       return redirect(url_for('showLogin'))
 
     restaurant = session.query(Restaurant).filter_by(id = restaurant_id).one()
+    creator = session.query(User).filter_by(id = restaurant.user_id).one()
+
+    if login_session['email'] != creator.email:
+      flash('You don\'t have the permission to delete this restaurant\'s menu items.')
+      return redirect(url_for('showRestaurants'))
+
     itemToDelete = session.query(MenuItem).filter_by(id = menu_id).one()
     if request.method == 'POST':
         session.delete(itemToDelete)
