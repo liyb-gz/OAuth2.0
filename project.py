@@ -64,7 +64,8 @@ def newRestaurant():
   if 'username' not in login_session:
       return redirect('/login')
   if request.method == 'POST':
-      newRestaurant = Restaurant(name = request.form['name'])
+      newRestaurant = Restaurant(name = request.form['name'],
+                                 user_id = login_session['user_id'])
       session.add(newRestaurant)
       flash('New Restaurant %s Successfully Created' % newRestaurant.name)
       session.commit()
@@ -122,7 +123,12 @@ def newMenuItem(restaurant_id):
 
   restaurant = session.query(Restaurant).filter_by(id = restaurant_id).one()
   if request.method == 'POST':
-      newItem = MenuItem(name = request.form['name'], description = request.form['description'], price = request.form['price'], course = request.form['course'], restaurant_id = restaurant_id)
+      newItem = MenuItem(name = request.form['name'],
+                         description = request.form['description'],
+                         price = request.form['price'],
+                         course = request.form['course'],
+                         restaurant_id = restaurant_id,
+                         user_id = login_session['user_id'])
       session.add(newItem)
       session.commit()
       flash('New Menu %s Item Successfully Created' % (newItem.name))
@@ -255,6 +261,13 @@ def gConnect():
       login_session['picture'] = data['picture']
       login_session['email'] = data['email']
 
+      user_id = getUserID(login_session['email'])
+
+      if user_id is not None:
+        login_session['user_id'] = user_id
+      else:
+        login_session['user_id'] = createUser(login_session)
+
       output = ''
       output += '<h1>Welcome, '
       output += login_session['username']
@@ -303,7 +316,7 @@ def gDisonnect():
     if result.status == 200:
       del login_session['access_token']
       del login_session['g_user_id']
-      # del login_session['user_id']
+      del login_session['user_id']
       del login_session['username']
       del login_session['email']
       del login_session['picture']
