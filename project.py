@@ -201,7 +201,7 @@ def gConnect():
     url = ('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={}'.format(access_token))
     h = httplib2.Http()
     result = json.loads(h.request(url, 'GET')[1])
-    user_id = result.get('user_id')
+    g_user_id = result.get('user_id')
 
     # If there was an error in the access token info, abort.
     if result.get('error') is not None:
@@ -220,7 +220,7 @@ def gConnect():
     try:
       id_info = id_token.verify_oauth2_token(id_code, g_requests.Request(), CLIENT_ID)
 
-      if id_info['sub'] != user_id:
+      if id_info['sub'] != g_user_id:
         response = make_response(
             json.dumps("Token's user ID doesn't match given user ID."), 401)
         response.headers['Content-Type'] = 'application/json'
@@ -232,8 +232,8 @@ def gConnect():
 
       # In case the user has already logged in
       # stored_access_token = login_session.get('access_token')
-      # stored_user_id = login_session.get('user_id')
-      # if stored_access_token is not None and user_id == stored_user_id:
+      # stored_g_user_id = login_session.get('g_user_id')
+      # if stored_access_token is not None and g_user_id == stored_g_user_id:
       #   # Update access token
       #   login_session['access_token'] = access_token
       #   response = make_response(json.dumps('Current user is already connected.'), 200)
@@ -242,7 +242,7 @@ def gConnect():
 
       # Store the access token in the session for later use.
       login_session['access_token'] = access_token
-      login_session['user_id'] = user_id
+      login_session['g_user_id'] = g_user_id
 
       # Get user info
       userinfo_url = "https://www.googleapis.com/oauth2/v1/userinfo"
@@ -302,7 +302,8 @@ def gDisonnect():
     # if result['status'] == '200':
     if result.status == 200:
       del login_session['access_token']
-      del login_session['user_id']
+      del login_session['g_user_id']
+      # del login_session['user_id']
       del login_session['username']
       del login_session['email']
       del login_session['picture']
