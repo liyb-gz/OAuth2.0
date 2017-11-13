@@ -24,6 +24,8 @@ from google.auth.transport import requests as g_requests
 CLIENT_ID = json.loads(
   open('client_secret.json', 'r').read())['web']['client_id']
 
+FB_APP = json.loads(open('fb_client_secret.json', 'r').read())['facebook app']
+
 #Connect to Database and create database session
 engine = create_engine('sqlite:///restaurantmenu_with_users.db')
 Base.metadata.bind = engine
@@ -227,7 +229,10 @@ def showLogin():
   state = ''.join(random.choice(string.ascii_uppercase + string.digits)
                   for x in xrange(32))
   login_session['state'] = state
-  return render_template('login.html', STATE = state, CLIENT_ID = CLIENT_ID)
+  return render_template('login.html', 
+                         STATE = state, 
+                         CLIENT_ID = CLIENT_ID,
+                         FB_APP = FB_APP)
 
 # Process login info
 @app.route('/gconnect', methods=['POST'])
