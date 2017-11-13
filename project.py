@@ -84,6 +84,12 @@ def editRestaurant(restaurant_id):
       return redirect('/login')
 
   editedRestaurant = session.query(Restaurant).filter_by(id = restaurant_id).one()
+  creator = session.query(User).filter_by(id = editedRestaurant.user_id).one()
+
+  if login_session['email'] != creator.email:
+    flash('You don\'t have the permission to edit this restaurant.')
+    return redirect('/restaurant')
+
 
   if request.method == 'POST':
       if request.form['name']:
@@ -116,6 +122,7 @@ def showMenu(restaurant_id):
     restaurant = session.query(Restaurant).filter_by(id = restaurant_id).one()
     items = session.query(MenuItem).filter_by(restaurant_id = restaurant_id).all()
     creator = session.query(User).filter_by(id = restaurant.user_id).one()
+
     if ('username' not in login_session) or \
        (login_session['email'] != creator.email):
       return render_template('publicmenu.html',
