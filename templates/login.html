@@ -5,16 +5,16 @@
 </head>
 <body>
   <div id="signin-button"></div>
-  <div class="fb-login-button" 
-       data-width="240" 
-       data-max-rows="1" 
-       data-size="large" 
-       data-button-type="login_with" 
-       data-show-faces="false" 
-       data-auto-logout-link="false" 
+  <div class="fb-login-button"
+       data-width="240"
+       data-max-rows="1"
+       data-size="large"
+       data-button-type="login_with"
+       data-show-faces="false"
+       data-auto-logout-link="false"
        data-use-continue-as="false"
        onlogin="fb_onlogin"
-       scope="public_profile, email"></div>
+       data-scope="public_profile, email"></div>
   <div id="result"></div>
   <script>
 
@@ -44,15 +44,15 @@
   	  $.ajax({
   	  	type: 'POST',
   	  	url: '/gconnect?state={{STATE}}',
-	    processData: false,
-	    contentType: 'application/json; charset=utf-8',
-	    data: JSON.stringify(googleUser.getAuthResponse()),
-	    success: function (result) {
-	    	$('#result').html('Log in success!<br />' + result);
-	    	// setTimeout(function() {
-	     //      window.location.href = "/restaurant";
-	     //    }, 4000);
-	    }
+  	    processData: false,
+  	    contentType: 'application/json; charset=utf-8',
+  	    data: JSON.stringify(googleUser.getAuthResponse()),
+  	    success: function (result) {
+  	    	$('#result').html('Log in success!<br />' + result);
+  	    	// setTimeout(function() {
+  	     //      window.location.href = "/restaurant";
+  	     //    }, 4000);
+  	    }
   	  })
     }
 
@@ -73,8 +73,33 @@
     }
 
     function fb_onlogin() {
-      console.log('facebook login callback')
-      console.log(FB.getAuthResponse())
+      FB.getLoginStatus(function(response) {
+        console.log(response);
+        statusChangeCallback(response);
+      });
+    }
+
+    function statusChangeCallback(response) {
+      if (response.status === 'connected') {
+        FB.api('/me', {fields:'email,name'}, function(response) {
+          console.log(response);
+          $.ajax({
+            type: 'POST',
+            url: '/fconnect?state={{STATE}}',
+            processData: false,
+            contentType: 'application/json; charset=utf-8',
+            data: response,
+            success: function (result) {
+              $('#result').html('Log in success!<br />' + result);
+              // setTimeout(function() {
+             //      window.location.href = "/restaurant";
+             //    }, 4000);
+            }
+          });
+        });
+      } else {
+
+      }
     }
   </script>
 
@@ -99,9 +124,9 @@
         xfbml      : true,
         version    : '{{FB_APP["version"]}}'
       });
-        
-      FB.AppEvents.logPageView(); 
-        
+
+      FB.AppEvents.logPageView();
+
     };
 
     (function(d, s, id){
