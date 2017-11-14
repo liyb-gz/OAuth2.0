@@ -82,7 +82,7 @@
             url: '/fbconnect?state={{STATE}}',
             processData: false,
             contentType: 'application/json; charset=utf-8',
-            data: response.authResponse,
+            data: JSON.stringify(response.authResponse),
             success: function (result) {
               $('#result').html('Log in success!<br />' + result);
               // setTimeout(function() {

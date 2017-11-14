@@ -229,17 +229,17 @@ def showLogin():
   state = ''.join(random.choice(string.ascii_uppercase + string.digits)
                   for x in xrange(32))
   login_session['state'] = state
-  return render_template('login.html', 
-                         STATE = state, 
+  return render_template('login.html',
+                         STATE = state,
                          CLIENT_ID = CLIENT_ID,
                          FB_APP = FB_APP)
 
-# Process login info
+# Process Google login info
 @app.route('/gconnect', methods=['POST'])
 def gConnect():
 
   # Check session state
-  if request.args.get('state') != login_session['state']:
+  if request.args.get('state') != login_session.get('state'):
     response = make_response(json.dumps('Invalid state.'), 401)
     response.headers['Content-Type'] = 'application/json'
     return response
@@ -304,6 +304,7 @@ def gConnect():
 
       data = answer.json()
 
+      # login_session['provider'] = "google"
       login_session['username'] = data['name']
       login_session['picture'] = data['picture']
       login_session['email'] = data['email']
@@ -331,9 +332,153 @@ def gConnect():
       response.headers['Content-Type'] = 'application/json'
       return response
 
-# User logout
-@app.route('/gdisconnect', methods=['GET', 'POST'])
+# User Google logout
+@app.route('/gdisconnect', methods=['POST'])
 def gDisonnect():
+  access_token = login_session.get('access_token')
+
+  # Check if the user is logged in
+  if access_token is None:
+    print 'Access Token is None'
+    response = make_response(json.dumps('Current user not connected.'), 401)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+
+  # User logged in, check him/her out.
+  else:
+    print 'In gdisconnect access token is {}'.format(access_token)
+    print 'User name is: {}'.format(login_session['username'])
+
+    # Send request to google to revoke access token
+    # url = 'https://accounts.google.com/o/oauth2/revoke?token={}'.format(access_token)
+    url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % login_session['access_token']
+    print 'URL to revoke token: {}'.format(url)
+    h = httplib2.Http()
+    result = h.request(url, 'GET')[0]
+
+    print 'HTTP Request to Google to revoke token: \n{}'.format(result)
+
+    # Request to google successful
+    print result['status']
+    # if result['status'] == '200':
+    if result.status == 200:
+      del login_session['access_token']
+      del login_session['g_user_id']
+      del login_session['user_id']
+      del login_session['username']
+      del login_session['email']
+      del login_session['picture']
+      # del login_session['provider']
+      response = make_response(json.dumps('Successfully disconnected.'), 200)
+      response.headers['Content-Type'] = 'application/json'
+      return response
+    else:
+      response = make_response(json.dumps('Failed to revoke token for given user.', 400))
+      response.headers['Content-Type'] = 'application/json'
+      return response
+
+# Process Facebook login info
+@app.route('/fbconnect', methods=['POST'])
+def fbConnect():
+
+  # Check session state
+  if request.args.get('state') != login_session.get('state'):
+    response = make_response(json.dumps('Invalid state.'), 401)
+    response.headers['Content-Type'] = 'application/json'
+    return response
+
+  # Session state correct, process ajax json from frontend
+  else:
+    auth_response = request.json
+    print auth_response
+    access_token = auth_response.get('accessToken')
+    fb_user_id = auth_response.get('userID')
+
+    # Exchange short term token for long term token
+    url = ('https://graph.facebook.com/' \
+           'oauth/access_token?' \
+           'grant_type=fb_exchange_token&' \
+           'client_id={}&' \
+           'client_secret={}&' \
+           'fb_exchange_token={}').format(FB_APP['id'], FB_APP['secret'], access_token)
+    h = httplib2.Http()
+    result = json.loads(h.request(url, 'GET')[1])
+
+    # If there was an error in the access token info, abort.
+    if result.get('error') is not None:
+      response = make_response(json.dumps(result.get('error')), 500)
+      response.headers['Content-Type'] = 'application/json'
+      return response
+
+    access_token = result.get('access_token')
+    print access_token
+
+    url = ('https://graph.facebook.com/{}/me?' \
+            'access_token={}&fields=name,id,email').format(FB_APP['version'], access_token)
+    h = httplib2.Http()
+    result = json.loads(h.request(url, 'GET')[1])
+
+    # Verify user
+    if result.get('id') != fb_user_id:
+      response = make_response(
+        json.dumps("Token's user ID doesn't match given user ID."), 401)
+      response.headers['Content-Type'] = 'application/json'
+      return response
+
+    name = result.get('name')
+    email = result.get('email')
+    print name, email
+
+    #   # In case the user has already logged in
+    #   stored_access_token = login_session.get('access_token')
+    #   stored_g_user_id = login_session.get('g_user_id')
+    #   if stored_access_token is not None and g_user_id == stored_g_user_id:
+    #     # Update access token
+    #     login_session['access_token'] = access_token
+    #     response = make_response(json.dumps('Current user is already connected.'), 200)
+    #     response.headers['Content-Type'] = 'application/json'
+    #     return response
+
+    # Store the access token in the session for later use.
+    login_session['access_token'] = access_token
+    login_session['fb_user_id'] = fb_user_id
+
+    # Get user picture
+    url = ('https://graph.facebook.com/{}/me/picture?' \
+            'access_token={}&fields=name,id,email').format(FB_APP['version'],access_token)
+
+    #   data = answer.json()
+
+    #   login_session['username'] = data['name']
+    #   login_session['picture'] = data['picture']
+    #   login_session['email'] = data['email']
+
+    #   user_id = getUserID(login_session['email'])
+
+    #   if user_id is not None:
+    #     login_session['user_id'] = user_id
+    #   else:
+    #     login_session['user_id'] = createUser(login_session)
+
+    #   output = ''
+    #   output += '<h1>Welcome, '
+    #   output += login_session['username']
+    #   output += '!</h1>'
+    #   output += '<img src="'
+    #   output += login_session['picture']
+    #   output += ' " style = "width: 30px; height: 30px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
+    #   flash("you are now logged in as %s" % login_session['username'])
+    #   print "Access token: {}".format(login_session['access_token'])
+    #   return output
+
+    # except ValueError, error:
+    #   response = make_response(json.dumps(str(error)), 401)
+    #   response.headers['Content-Type'] = 'application/json'
+    #   return response
+
+# User logout
+@app.route('/fbdisconnect', methods=['GET', 'POST'])
+def fbDisonnect():
   access_token = login_session.get('access_token')
 
   # Check if the user is logged in
@@ -374,6 +519,7 @@ def gDisonnect():
       response = make_response(json.dumps('Failed to revoke token for given user.', 400))
       response.headers['Content-Type'] = 'application/json'
       return response
+
 
 def getUserInfo(user_id):
   try:
