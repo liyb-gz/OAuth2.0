@@ -304,7 +304,7 @@ def gConnect():
 
       data = answer.json()
 
-      # login_session['provider'] = "google"
+      login_session['provider'] = "google"
       login_session['username'] = data['name']
       login_session['picture'] = data['picture']
       login_session['email'] = data['email']
@@ -368,7 +368,7 @@ def gDisonnect():
       del login_session['username']
       del login_session['email']
       del login_session['picture']
-      # del login_session['provider']
+      del login_session['provider']
       response = make_response(json.dumps('Successfully disconnected.'), 200)
       response.headers['Content-Type'] = 'application/json'
       return response
@@ -411,7 +411,6 @@ def fbConnect():
       return response
 
     access_token = result.get('access_token')
-    print access_token
 
     url = ('https://graph.facebook.com/{}/me?' \
             'access_token={}&fields=name,id,email').format(FB_APP['version'], access_token)
@@ -427,54 +426,54 @@ def fbConnect():
 
     name = result.get('name')
     email = result.get('email')
-    print name, email
 
-    #   # In case the user has already logged in
-    #   stored_access_token = login_session.get('access_token')
-    #   stored_g_user_id = login_session.get('g_user_id')
-    #   if stored_access_token is not None and g_user_id == stored_g_user_id:
-    #     # Update access token
-    #     login_session['access_token'] = access_token
-    #     response = make_response(json.dumps('Current user is already connected.'), 200)
-    #     response.headers['Content-Type'] = 'application/json'
-    #     return response
+    # Get user picture
+    url = ('https://graph.facebook.com/{}/me/picture?' \
+            'access_token={}&height=200&width=200' \
+            '&redirect=0').format(FB_APP['version'],access_token)
+    h = httplib2.Http()
+    result = json.loads(h.request(url, 'GET')[1])
+
+    picture = result.get('data').get('url')
+
+    # In case the user has already logged in
+    stored_access_token = login_session.get('access_token')
+    stored_g_user_id = login_session.get('g_user_id')
+    if stored_access_token is not None and g_user_id == stored_g_user_id:
+      # Update access token
+      login_session['access_token'] = access_token
+      response = make_response(json.dumps('Current user is already connected.'), 200)
+      response.headers['Content-Type'] = 'application/json'
+      return response
 
     # Store the access token in the session for later use.
     login_session['access_token'] = access_token
     login_session['fb_user_id'] = fb_user_id
 
-    # Get user picture
-    url = ('https://graph.facebook.com/{}/me/picture?' \
-            'access_token={}&fields=name,id,email').format(FB_APP['version'],access_token)
+    login_session['username'] = name
+    login_session['picture'] = picture
+    login_session['email'] = email
 
-    #   data = answer.json()
+    login_session['provider'] = "facebook"
 
-    #   login_session['username'] = data['name']
-    #   login_session['picture'] = data['picture']
-    #   login_session['email'] = data['email']
+    user_id = getUserID(login_session['email'])
 
-    #   user_id = getUserID(login_session['email'])
+    if user_id is not None:
+      login_session['user_id'] = user_id
+    else:
+      login_session['user_id'] = createUser(login_session)
 
-    #   if user_id is not None:
-    #     login_session['user_id'] = user_id
-    #   else:
-    #     login_session['user_id'] = createUser(login_session)
+    output = ''
+    output += '<h1>Welcome, '
+    output += login_session['username']
+    output += '!</h1>'
+    output += '<img src="'
+    output += login_session['picture']
+    output += ' " style = "width: 30px; height: 30px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
+    flash("you are now logged in as %s" % login_session['username'])
+    print "Access token: {}".format(login_session['access_token'])
+    return output
 
-    #   output = ''
-    #   output += '<h1>Welcome, '
-    #   output += login_session['username']
-    #   output += '!</h1>'
-    #   output += '<img src="'
-    #   output += login_session['picture']
-    #   output += ' " style = "width: 30px; height: 30px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
-    #   flash("you are now logged in as %s" % login_session['username'])
-    #   print "Access token: {}".format(login_session['access_token'])
-    #   return output
-
-    # except ValueError, error:
-    #   response = make_response(json.dumps(str(error)), 401)
-    #   response.headers['Content-Type'] = 'application/json'
-    #   return response
 
 # User logout
 @app.route('/fbdisconnect', methods=['GET', 'POST'])
@@ -507,11 +506,15 @@ def fbDisonnect():
     # if result['status'] == '200':
     if result.status == 200:
       del login_session['access_token']
-      del login_session['g_user_id']
+      del login_session['fb_user_id']
+
       del login_session['user_id']
       del login_session['username']
       del login_session['email']
       del login_session['picture']
+      
+      del login_session['provider']
+
       response = make_response(json.dumps('Successfully disconnected.'), 200)
       response.headers['Content-Type'] = 'application/json'
       return response
