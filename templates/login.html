@@ -75,20 +75,14 @@
     function fb_onlogin() {
       FB.getLoginStatus(function(response) {
         console.log(response);
-        statusChangeCallback(response);
-      });
-    }
-
-    function statusChangeCallback(response) {
-      if (response.status === 'connected') {
-        FB.api('/me', {fields:'email,name'}, function(response) {
-          console.log(response);
+        console.log(response.authResponse);
+        if (response.status === 'connected') {
           $.ajax({
             type: 'POST',
-            url: '/fconnect?state={{STATE}}',
+            url: '/fbconnect?state={{STATE}}',
             processData: false,
             contentType: 'application/json; charset=utf-8',
-            data: response,
+            data: response.authResponse,
             success: function (result) {
               $('#result').html('Log in success!<br />' + result);
               // setTimeout(function() {
@@ -96,11 +90,12 @@
              //    }, 4000);
             }
           });
-        });
-      } else {
-
-      }
+        } else {
+          console.error('Failed to login facebook.');
+        }
+      });
     }
+
   </script>
 
   <!-- <script src="https://apis.google.com/js/platform.js?onload=gapiInit" async defer></script> -->
