@@ -14,7 +14,7 @@
        data-auto-logout-link="false" 
        data-use-continue-as="false"
        onlogin="fb_onlogin"
-       scope="public_profile, email"></div>
+       data-scope="public_profile,email"></div>
   <div id="result"></div>
   <script>
 
@@ -73,8 +73,19 @@
     }
 
     function fb_onlogin() {
-      console.log('facebook login callback')
-      console.log(FB.getAuthResponse())
+      FB.getLoginStatus(function(response) {
+        statusChangeCallback(response);
+      });
+    }
+
+    function statusChangeCallback(response) {
+      if (response.status === 'connected') {
+        FB.api('/me', {fields:'email,name,gender'}, function(response) {
+          console.log(response);
+        });
+      } else {
+
+      }
     }
   </script>
 
